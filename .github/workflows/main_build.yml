@@ -115,6 +115,16 @@ jobs:
     if: ${{ inputs.build_android }}
     runs-on: ubuntu-22.04
     steps:
+      - name: Free Disk Space (Conservative)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: false
       - uses: actions/checkout@v3
       - uses: subosito/flutter-action@v2
         with:
