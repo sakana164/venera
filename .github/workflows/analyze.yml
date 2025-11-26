@@ -1,9 +1,9 @@
 name: "analyze"
 on:
   pull_request:
-  push:
-    branches:
-      - master
+#  push:
+#    branches:
+#      - master
 
 jobs:
   analyze:
