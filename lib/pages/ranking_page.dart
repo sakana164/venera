@@ -79,7 +79,11 @@ class _RankingPageState extends State<RankingPage> {
       runSpacing: 8,
       children: [
         for (var option in options.entries)
-          buildOptionItem(option.value.tl, option.key, context)
+          buildOptionItem(
+            option.value.ts(widget.categoryKey),
+            option.key,
+            context
+          )
       ],
     ));
     return SliverToBoxAdapter(
