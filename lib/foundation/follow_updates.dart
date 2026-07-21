@@ -62,6 +62,10 @@ Future<ComicUpdateResult> updateComic(
       }
       return ComicUpdateResult(updated, null);
     } catch (e, s) {
+      if (e.toString().contains("Invalid status code: 404") ||
+          e.toString().contains("Gallery Removed")) {
+        return ComicUpdateResult(false, null);
+      }
       Log.error("Check Updates", e, s);
       await Future.delayed(const Duration(seconds: 2));
       retries--;

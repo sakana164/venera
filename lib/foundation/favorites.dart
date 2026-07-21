@@ -874,6 +874,178 @@ class LocalFavoritesManager with ChangeNotifier {
     return count;
   }
 
+  bool isRemovedComicError(String error) {
+    const keywords = [
+      "Gallery Removed",
+      "Gallery has been removed",
+      "Invalid status code: 404",
+      "Gallery Not Available",
+      "No Gallery Found",
+    ];
+
+    return keywords.any(error.contains);
+  }
+
+  Future<FavoriteItemWithFolderInfo?> checkInvalidComic(
+      FavoriteItemWithFolderInfo c) async {
+    Log.info("INVALID", "checking ${c.name}");
+    var source = c.type.comicSource;
+    if (c.type == ComicType.local) {
+      if (LocalManager().find(c.id, c.type) == null) {
+        Log.info("INVALID", "local invalid");
+        return c;
+      }
+      return null;
+    }
+    if (source == null) {
+      Log.info("INVALID", "source null");
+      return c;
+    }
+    try {
+      Log.info("INVALID", "before load ${c.id}");
+      var res = await source.loadComicInfo!(c.id);
+      if (res.errorMessage != null) {
+        var error = res.errorMessage!;
+        Log.info(
+          "INVALID",
+          "load error ${c.id}: ${res.errorMessage}",
+        );
+        if (isRemovedComicError(error)) {
+          Log.info(
+            "INVALID",
+            "mark invalid ${c.id}",
+          );
+          return c;
+        }
+        Log.info(
+          "INVALID",
+          "ignore error ${c.id}",
+        );
+        return null;
+      }
+      Log.info(
+        "INVALID",
+        "load success ${c.id}",
+      );
+    } catch (e) {
+      Log.error(
+        "Check invalid favorite",
+        "${c.id}\n$e",
+      );
+      return c;
+    }
+    Log.info(
+      "INVALID",
+      "not invalid ${c.id}",
+    );
+    return null;
+  }
+
+  Future<Map<String, int>> collectInvalid() async {
+    Map<String, List<FavoriteItemWithFolderInfo>> invalid = {};
+    var all = allComics();
+    List<FavoriteItemWithFolderInfo> invalidComics = [];
+    const maxConcurrent = 5;
+    for (int i = 0; i < all.length; i += maxConcurrent) {
+      var batch = all.skip(i).take(maxConcurrent);
+      var futures = batch.map((c) async {
+        try {
+          var r = await checkInvalidComic(c)
+              .timeout(const Duration(seconds: 40));
+        Log.info("INVALID", "finish ${c.id}");
+        return r;
+        } catch (e) {
+          Log.error(
+            "INVALID",
+            "timeout or error ${c.id}\n$e",
+          );
+          return c; // 超时直接认为无效
+        }
+      });
+      var results = await Future.wait(futures);
+      Log.info(
+        "INVALID",
+        "batch results = ${results.where((e) => e != null).length}/${results.length}",
+      );
+      for (var item in results) {
+        if (item != null) {
+          invalidComics.add(item);
+        }
+      }
+    }
+    Log.info(
+      "INVALID",
+      "invalid comics = ${invalidComics.length}",
+    );
+    for (var c in invalidComics) {
+      String folderName = c.folder;
+      String sourceName;
+      var source = c.type.comicSource;
+      if (c.type == ComicType.local) {
+       sourceName = "local";
+      } else {
+        sourceName =
+            source?.key ??
+            "RemovedSource-${c.type.value}";
+      }
+      String name =
+          "$folderName-$sourceName";
+      invalid.putIfAbsent(name, () => []);
+      invalid[name]!.add(c);
+    }
+    Log.info(
+      "INVALID",
+      "groups = ${invalid.keys.toList()}",
+    );
+
+    Map<String,int> result = {};
+    for (var entry in invalid.entries) {
+      Log.info(
+        "INVALID",
+        "moving group ${entry.key}, count=${entry.value.length}",
+      );
+      var folderName =
+          await createRemovedFolder(entry.key);
+      for(var comic in entry.value){
+        Log.info(
+          "INVALID",
+          "move ${comic.name}",
+        );
+        moveFavorite(
+          comic.folder,
+          folderName,
+          comic.id,
+          comic.type,
+        );
+      }
+      result[folderName]= entry.value.length;
+    }
+    return result;
+  }
+
+  String createRemovedFolder(String source){
+    source = source
+        .replaceAll('"', '')
+        .replaceAll('\n', ' ')
+        .trim();
+
+   int index=1;
+   while (true) {
+    var name =
+        "$source Removed ${index.toString().padLeft(3, '0')}";
+    try {
+      createFolder(name);
+      return name;
+    } catch (e) {
+        if(e.toString().contains("Folder is existing")){
+          index++;
+          continue;
+        }
+        rethrow;
+    }
+   }
+  }
+
   Future<void> clearAll() async {
     _db.dispose();
     File("${App.dataPath}/local_favorite.db").deleteSync();

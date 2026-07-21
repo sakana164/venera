@@ -59,6 +59,26 @@ class _LocalFavoritesSettingsState extends State<LocalFavoritesSettings> {
           },
           actionTitle: 'Delete'.tl,
         ).toSliver(),
+        _CallbackSetting(
+          title: "Collect unavailable local favorite items".tl,
+          callback: () async {
+           var controller = showLoadingDialog(context);
+           var result = await LocalFavoritesManager().collectInvalid();
+          controller.close();
+          if (result.isEmpty) {
+             context.showMessage(message: "No unavailable favorites found".tl);
+             return;
+            }
+            String message = "";
+            result.forEach((folder, count) {
+              message += "$folder ($count)\n";
+            });
+            context.showMessage(
+              message: "Moved unavailable favorites to:\n$message".tl,
+            );
+          },
+          actionTitle: "Collect".tl,
+         ).toSliver(),
         SelectSetting(
           title: "Click favorite".tl,
           settingKey: "onClickFavorite",
