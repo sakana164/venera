@@ -49,36 +49,43 @@ class _LocalFavoritesSettingsState extends State<LocalFavoritesSettings> {
           },
         ).toSliver(),
         _CallbackSetting(
-          title: "Delete all unavailable local favorite items".tl,
-          callback: () async {
-            var controller = showLoadingDialog(context);
-            var count = await LocalFavoritesManager().removeInvalid();
-            controller.close();
-            context.showMessage(
-                message: "Deleted @a favorite items".tlParams({'a': count}));
-          },
-          actionTitle: 'Delete'.tl,
-        ).toSliver(),
-        _CallbackSetting(
           title: "Collect unavailable local favorite items".tl,
+          subtitle:
+              "Unavailable favorites will be moved to a [Removed] folder"
+                  .tl,
           callback: () async {
-           var controller = showLoadingDialog(context);
-           var result = await LocalFavoritesManager().collectInvalid();
-          controller.close();
-          if (result.isEmpty) {
-             context.showMessage(message: "No unavailable favorites found".tl);
-             return;
+            // 选择扫描范围
+            var selected =
+                await showInvalidFolderSelector(context);
+            // 用户关闭弹窗
+            if (selected == null) {
+              return;
+            }
+            String? folder;
+            // 全部收藏夹
+            if (selected != "__ALL__") {
+              folder = selected;
+            }
+            var controller =
+                showLoadingDialog(context);
+            try {
+              var result = await LocalFavoritesManager().collectInvalid(folder: folder);
+            if (result.isEmpty) {
+              context.showMessage(message: "No unavailable favorites found".tl);
+              return;
             }
             String message = "";
             result.forEach((folder, count) {
               message += "$folder ($count)\n";
             });
             context.showMessage(
-              message: "Moved unavailable favorites to:\n$message".tl,
-            );
+              message: "Moved unavailable favorites to:\n$message".tl,);
+            } finally {
+              controller.close();
+            }
           },
           actionTitle: "Collect".tl,
-         ).toSliver(),
+        ).toSliver(),
         SelectSetting(
           title: "Click favorite".tl,
           settingKey: "onClickFavorite",
@@ -90,4 +97,51 @@ class _LocalFavoritesSettingsState extends State<LocalFavoritesSettings> {
       ],
     );
   }
+}
+
+Future<String?> showInvalidFolderSelector(
+    BuildContext context,
+) async {
+  
+  final folders =
+      LocalFavoritesManager()
+          .folderNames
+          .where((e) => !e.startsWith("[Removed]"))
+          .toList();
+  return await showDialog<String?>(
+    context: context,
+    builder: (context) {
+      return SimpleDialog(
+        title: Text(
+          "Select folder to scan".tl,
+        ),
+        children: [
+          SimpleDialogOption(
+            onPressed: () {
+              Navigator.pop(
+                context,
+                "__ALL__",
+              );
+            },
+            child: Text(
+              "All folders".tl,
+            ),
+          ),
+          ...folders.map(
+            (folder) {
+              return SimpleDialogOption(
+                onPressed: () {
+                  Navigator.pop(
+                    context,
+                    folder,
+                  );
+                },
+                child: Text(folder),
+              );
+            },
+          ),
+        ],
+      );
+    },
+  );
 }

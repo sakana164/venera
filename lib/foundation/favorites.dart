@@ -941,9 +941,22 @@ class LocalFavoritesManager with ChangeNotifier {
     return null;
   }
 
-  Future<Map<String, int>> collectInvalid() async {
+  Future<Map<String, int>> collectInvalid({
+    String? folder,
+  }) async {
     Map<String, List<FavoriteItemWithFolderInfo>> invalid = {};
-    var all = allComics();
+    var all = folder == null
+        ? allComics()
+        : getFolderComics(folder)
+            .map((e) => FavoriteItemWithFolderInfo(e, folder))
+            .toList();
+    all = all
+        .where((c) =>
+            !c.folder.startsWith("[Removed] "))
+        .where((c) =>
+            c.type == ComicType.local ||
+            c.type.comicSource?.loadComicInfo != null)
+        .toList();
     List<FavoriteItemWithFolderInfo> invalidComics = [];
     const maxConcurrent = 5;
     for (int i = 0; i < all.length; i += maxConcurrent) {
@@ -951,7 +964,7 @@ class LocalFavoritesManager with ChangeNotifier {
       var futures = batch.map((c) async {
         try {
           var r = await checkInvalidComic(c)
-              .timeout(const Duration(seconds: 40));
+              .timeout(const Duration(seconds: 20));
         Log.info("INVALID", "finish ${c.id}");
         return r;
         } catch (e) {
@@ -959,7 +972,7 @@ class LocalFavoritesManager with ChangeNotifier {
             "INVALID",
             "timeout or error ${c.id}\n$e",
           );
-          return c; // 超时直接认为无效
+          return null;
         }
       });
       var results = await Future.wait(futures);
@@ -989,7 +1002,7 @@ class LocalFavoritesManager with ChangeNotifier {
             "RemovedSource-${c.type.value}";
       }
       String name =
-          "$folderName-$sourceName";
+          "$folderName [$sourceName]";
       invalid.putIfAbsent(name, () => []);
       invalid[name]!.add(c);
     }
@@ -1020,6 +1033,7 @@ class LocalFavoritesManager with ChangeNotifier {
       }
       result[folderName]= entry.value.length;
     }
+    initCounts();
     return result;
   }
 
@@ -1029,21 +1043,12 @@ class LocalFavoritesManager with ChangeNotifier {
         .replaceAll('\n', ' ')
         .trim();
 
-   int index=1;
-   while (true) {
-    var name =
-        "$source Removed ${index.toString().padLeft(3, '0')}";
-    try {
-      createFolder(name);
-      return name;
-    } catch (e) {
-        if(e.toString().contains("Folder is existing")){
-          index++;
-          continue;
-        }
-        rethrow;
+    var target = "[Removed] $source";
+    if (existsFolder(target)) {
+     return target;
     }
-   }
+    createFolder(target);
+    return target;
   }
 
   Future<void> clearAll() async {

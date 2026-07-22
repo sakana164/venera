@@ -440,8 +440,13 @@
     "Enable device specific settings": "启用此设备特定设置",
     "Ignore Certificate Errors": "忽略证书错误",
     "Mouse scroll speed": "鼠标滚动速度",
-    "Collect unavailable local favorite items": "收集不可用的本地收藏项目",
-    "Collect": "收集"
+    "Collect unavailable local favorite items": "整理失效的本地收藏",
+    "Collect": "整理",
+    "Select folder to scan": "选择要扫描的收藏夹",
+    "All folders": "所有收藏夹",
+    "No unavailable favorites found": "未找到失效的收藏",
+    "Moved unavailable favorites to:\n$message": "已将失效的收藏移动到：\n$message",
+    "Unavailable favorites will be moved to a [Removed] folder": "将失效的收藏移动到以[Removed] 原收藏夹名 [source]命名的收藏夹"
   },
   "zh_TW": {
     "Home": "首頁",
@@ -884,7 +889,12 @@
     "Enable device specific settings": "啟用此裝置特定設定",
     "Ignore Certificate Errors": "忽略證書錯誤",
     "Mouse scroll speed": "滑鼠滾動速度",
-    "Collect unavailable local favorite items": "收集所有無效的本機收藏",
-    "Collect": "收集"
+    "Collect unavailable local favorite items": "整理失效的本機收藏",
+    "Collect": "整理",
+    "Select folder to scan": "選擇要掃描的收藏夾",
+    "All folders": "所有收藏夾",
+    "No unavailable favorites found": "未找到失效的收藏",
+    "Moved unavailable favorites to:\n$message": "已將失效的收藏移動到：\n$message",
+    "Unavailable favorites will be moved to a [Removed] folder": "將失效的收藏移動到以 [Removed] 原收藏夾名 [source] 命名的收藏夾"
   }
 }
