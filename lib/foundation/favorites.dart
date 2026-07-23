@@ -888,7 +888,6 @@ class LocalFavoritesManager with ChangeNotifier {
 
   Future<FavoriteItemWithFolderInfo?> checkInvalidComic(
       FavoriteItemWithFolderInfo c) async {
-    Log.info("INVALID", "checking ${c.name}");
     var source = c.type.comicSource;
     if (c.type == ComicType.local) {
       if (LocalManager().find(c.id, c.type) == null) {
@@ -902,7 +901,6 @@ class LocalFavoritesManager with ChangeNotifier {
       return c;
     }
     try {
-      Log.info("INVALID", "before load ${c.id}");
       var res = await source.loadComicInfo!(c.id);
       if (res.errorMessage != null) {
         var error = res.errorMessage!;
@@ -917,16 +915,8 @@ class LocalFavoritesManager with ChangeNotifier {
           );
           return c;
         }
-        Log.info(
-          "INVALID",
-          "ignore error ${c.id}",
-        );
         return null;
       }
-      Log.info(
-        "INVALID",
-        "load success ${c.id}",
-      );
     } catch (e) {
       Log.error(
         "Check invalid favorite",
@@ -934,10 +924,6 @@ class LocalFavoritesManager with ChangeNotifier {
       );
       return c;
     }
-    Log.info(
-      "INVALID",
-      "not invalid ${c.id}",
-    );
     return null;
   }
 
@@ -965,7 +951,6 @@ class LocalFavoritesManager with ChangeNotifier {
         try {
           var r = await checkInvalidComic(c)
               .timeout(const Duration(seconds: 20));
-        Log.info("INVALID", "finish ${c.id}");
         return r;
         } catch (e) {
           Log.error(
@@ -976,10 +961,6 @@ class LocalFavoritesManager with ChangeNotifier {
         }
       });
       var results = await Future.wait(futures);
-      Log.info(
-        "INVALID",
-        "batch results = ${results.where((e) => e != null).length}/${results.length}",
-      );
       for (var item in results) {
         if (item != null) {
           invalidComics.add(item);
@@ -1008,14 +989,14 @@ class LocalFavoritesManager with ChangeNotifier {
     }
     Log.info(
       "INVALID",
-      "groups = ${invalid.keys.toList()}",
+      "found ${invalidComics.length} invalid comics in ${invalid.length} groups",
     );
 
     Map<String,int> result = {};
     for (var entry in invalid.entries) {
       Log.info(
         "INVALID",
-        "moving group ${entry.key}, count=${entry.value.length}",
+        "moving ${entry.value.length} items to ${entry.key}",
       );
       var folderName =
           await createRemovedFolder(entry.key);
