@@ -32,6 +32,37 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
 
+# Compatibility: <experimental/coroutine> is deprecated in newer MSVC.
+# Newer MSVC requires _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS.
+# We detect this at configure time and apply globally for compatibility with
+# both old and new compilers. This must be global because third-party plugins
+# (like flutter_inappwebview_windows) have their own CMakeLists.txt that
+# doesn't use our APPLY_STANDARD_SETTINGS function.
+include(CheckCXXSourceCompiles)
+
+# Try compiling <experimental/coroutine> without any special defines
+check_cxx_source_compiles("
+  #include <experimental/coroutine>
+  int main() { return 0; }
+" EXPERIMENTAL_COROUTINE_WORKS)
+
+# If it fails, try with the silence macro (for newer MSVC)
+if(NOT EXPERIMENTAL_COROUTINE_WORKS)
+  set(CMAKE_REQUIRED_DEFINITIONS "-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS")
+  check_cxx_source_compiles("
+    #include <experimental/coroutine>
+    int main() { return 0; }
+  " EXPERIMENTAL_COROUTINE_WORKS_WITH_SILENCE)
+  unset(CMAKE_REQUIRED_DEFINITIONS)
+  
+  if(EXPERIMENTAL_COROUTINE_WORKS_WITH_SILENCE)
+    # Apply globally so all targets (including third-party plugins) get this
+    add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+  else()
+    message(FATAL_ERROR "Cannot compile <experimental/coroutine> - your compiler may not support it")
+  endif()
+endif()
+
 # Compilation settings that should be applied to most targets.
 #
 # Be cautious about adding new options here, as plugins use this function by
